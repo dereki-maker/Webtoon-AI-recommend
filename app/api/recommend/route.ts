@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-import { REAL_WEBTOON_DB } from "@/src/config/data";
+import { NAVER_WEBTOON_DB } from "@/src/config/naver_data";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     추천하지 마세요.
 
     [참조 데이터베이스]
-    ${REAL_WEBTOON_DB}
+    ${NAVER_WEBTOON_DB}
 
     다음은 사용자가 이미 읽은 작품 리스트입니다: [${seenList.join(", ")}].
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     1. 반드시 참조 데이터베이스에서 정보를 확인하고 추천하세요.
     2. 추천할 때 반드시 별점이 높아야할 필요는 없습니다. 
     3. 사용자가 이미 읽은 작품 리스트에 있는 작품은 추천하지 마세요.
-    4. 3개의 웹툰을 추천합니다. 연재 중인 것을 2개, 완결된 것 1개를 추천하세요.
+    4. 3개의 웹툰을 추천합니다.
     5. 사용자의 요구: "${prompt}"를 정확히 반영합니다.
     6. 한국어로 답변합니다. 반드시 아래 JSON 형식으로만 응답하세요.
 
