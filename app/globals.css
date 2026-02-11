@@ -24,3 +24,25 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer utilities {
+  /* 🟡 노란색 플래시 애니메이션 정의 */
+  @keyframes yellow-flash-fade {
+    0%, 30% {
+      background-color: #fef9c3; /* 연한 노란색 (yellow-100) */
+      border-color: #fde047;     /* 조금 진한 노란색 테두리 (yellow-300) */
+      box-shadow: 0 4px 6px -1px rgb(253 224 71 / 0.3), 0 2px 4px -2px rgb(253 224 71 / 0.3); /* 노란색 그림자 */
+    }
+    100% {
+      background-color: #ffffff; /* 원래 흰색 배경 */
+      border-color: #f1f5f9;     /* 원래 연한 회색 테두리 (slate-100) */
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* 원래 그림자 (shadow-sm) */
+    }
+  }
+
+  /* 🎯 URL 해시와 일치하는 요소(:target)에 애니메이션 적용 */
+  .animate-target-flash:target {
+    /* 이름 | 시간 | 속도 | 반복 | 끝난후 상태 */
+    animation: yellow-flash-fade 1.5s ease-out forwards;
+  }
+}

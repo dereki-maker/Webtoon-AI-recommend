@@ -30,16 +30,13 @@ export default function LibraryPage() {
   
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // 2. [Memo] 파생 데이터 연산 (이 위치가 효과보다 위에 있어야 에러가 안 납니다)
-  
-  // 전체 데이터에서 장르 목록 추출
+  // 2. [Memo] 파생 데이터 연산
   const genreList = useMemo(() => {
     const set = new Set<string>();
     allWebtoons.forEach(w => w.genres.forEach(g => set.add(g)));
     return ["전체", ...Array.from(set).sort()];
   }, [allWebtoons]);
 
-  // 필터링 및 검색 결과 (무한 스크롤의 기준 데이터)
   const filteredWebtoons = useMemo(() => {
     return allWebtoons.filter(w => {
       const matchGenre = selectedGenre === "전체" || w.genres.includes(selectedGenre);
@@ -48,11 +45,9 @@ export default function LibraryPage() {
     });
   }, [allWebtoons, selectedGenre, searchQuery]);
 
-  // 실제로 화면에 렌더링할 슬라이싱된 데이터
   const displayedWebtoons = useMemo(() => 
     filteredWebtoons.slice(0, visibleCount), 
   [filteredWebtoons, visibleCount]);
-
 
   // 3. [Data Loading] 데이터 로드 로직
   const loadLibraryData = async () => {
@@ -107,15 +102,10 @@ export default function LibraryPage() {
     setLoading(false);
   };
 
-  // 4. [Side Effects] 부수 효과 처리
-  
-  // 초기 로드 및 정렬 변경 시
+  // 4. [Side Effects]
   useEffect(() => { loadLibraryData(); }, [sortBy]);
-
-  // 필터/검색 시 노출 개수 초기화
   useEffect(() => { setVisibleCount(ITEMS_PER_PAGE); }, [selectedGenre, searchQuery, sortBy]);
 
-  // 무한 스크롤 감지
   useEffect(() => {
     if (loading) return;
     const observer = new IntersectionObserver(
@@ -130,7 +120,6 @@ export default function LibraryPage() {
     return () => observer.disconnect();
   }, [loading, visibleCount, filteredWebtoons.length]);
 
-  // Top 버튼 노출 로직
   useEffect(() => {
     const handleScroll = () => setShowTopButton(window.scrollY > 500);
     window.addEventListener("scroll", handleScroll);
@@ -141,9 +130,15 @@ export default function LibraryPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans relative">
-      {/* 홈 바로가기 */}
-      <div className="absolute top-10 left-6">
-        <Link href="/" className="bg-white text-slate-600 text-[20px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">← 홈으로</Link>
+      
+      {/* 🚀 [디자인 통일] 메인 페이지와 동일한 상단 네비게이션 섹션 */}
+      <div className="absolute top-6 left-6 z-40 flex gap-3">
+        <Link href="/" className="bg-white text-slate-600 text-[16px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
+          ← 홈으로
+        </Link>
+        <Link href="/feed" className="bg-white text-slate-600 text-[16px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
+          리뷰 저장소 💬
+        </Link>
       </div>
 
       <div className="max-w-7xl mx-auto pt-16">
@@ -183,7 +178,7 @@ export default function LibraryPage() {
           {displayedWebtoons.map((item, index) => (
             <Link 
               key={`${item.title}-${index}`} 
-              href={`/community/${encodeURIComponent(item.title)}`} // 상세 페이지 주소 생성
+              href={`/community/${encodeURIComponent(item.title)}`} 
               className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between min-h-[220px] group"
             >
               <div>
@@ -191,7 +186,6 @@ export default function LibraryPage() {
                   <span className="text-[10px] font-black text-blue-500 bg-blue-50 px-2 py-0.5 rounded tracking-tighter">{item.platform}</span>
                   <span className={`text-[9px] font-black px-2 py-0.5 rounded ${item.status === '완결' ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-500'}`}>{item.status}</span>
                 </div>
-                {/* group-hover를 써서 마우스를 올리면 제목 색이 바뀌게 센스를 더해봤습니다 */}
                 <h3 className="text-[18px] font-black text-slate-800 leading-tight mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{item.title}</h3>
                 <div className="flex flex-wrap gap-1 mb-4">
                   {item.genres.slice(0, 3).map(g => (
@@ -216,7 +210,6 @@ export default function LibraryPage() {
           ))}
         </div>
 
-        {/* 무한 스크롤 감지 보초(Sentinel) */}
         <div ref={sentinelRef} className="h-40 flex items-center justify-center">
           {visibleCount < filteredWebtoons.length ? (
             <div className="flex flex-col items-center gap-2">
@@ -229,7 +222,6 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {/* Top 버튼 */}
       <button
         onClick={scrollToTop}
         className={`fixed bottom-10 right-10 p-4 bg-slate-900 text-white rounded-full shadow-2xl transition-all duration-500 z-50 hover:bg-blue-600 active:scale-90 ${showTopButton ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"}`}

@@ -51,15 +51,24 @@ export default function CommunityDetailPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 font-sans pb-20">
-      {/* 좌측 상단 네비게이션 */}
-      <nav className="p-6 flex gap-3 max-w-7xl mx-auto">
-        <Link href="/" className="bg-white px-5 py-2 rounded-full shadow-sm text-[15px] font-bold text-slate-400 hover:text-blue-600 transition-all active:scale-95">홈으로 </Link>
-        <Link href="/library" className="bg-white px-5 py-2 rounded-full shadow-sm text-[15px] font-bold text-slate-400 hover:text-blue-600 transition-all active:scale-95">📚 별점 저장소</Link>
-      </nav>
+    // 1. 여기서 bg-slate-50을 주고 relative를 걸어야 버튼이 왼쪽 끝에 붙습니다.
+    <main className="min-h-screen bg-slate-50 font-sans pb-20 relative">
+      
+      {/* 🚀 상단 네비게이션: 메인 페이지와 동일하게 absolute top-6 left-6 적용 */}
+      <div className="absolute top-6 left-6 z-40 flex gap-3">
+        <Link href="/" className="bg-white text-slate-600 text-[16px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
+          ← 홈으로
+        </Link>
+        <Link href="/library" className="bg-white text-slate-600 text-[16px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
+          별점 저장소 📚
+        </Link>
+        <Link href="/feed" className="bg-white text-slate-600 text-[16px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
+          리뷰 저장소 💬
+        </Link>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-6 mt-10">
-        {/* 헤더 섹션: 제목(좌) / 별점(우-수직스택) */}
+      {/* 2. 본문 영역: pt-24를 줘서 버튼 뒤로 글자가 겹치지 않게 여백만 확보합니다. */}
+      <div className="max-w-4xl mx-auto px-6 pt-28">
         <header className="mb-16">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-slate-100">
             <div className="flex-1">
@@ -74,7 +83,6 @@ export default function CommunityDetailPage() {
               </div>
             </div>
 
-            {/* 수직 배치된 별점 영역 */}
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest leading-none">AI 별점</span>
@@ -88,7 +96,6 @@ export default function CommunityDetailPage() {
           </div>
         </header>
 
-        {/* 게시판 영역 (제목 및 구분선 삭제) */}
         <section>
           <CommunityBoard currentUser={user} webtoonTitle={title} onUpdateStats={fetchStats} />
         </section>
@@ -121,6 +128,7 @@ function CommunityBoard({ currentUser, webtoonTitle, onUpdateStats }: any) {
     }
   };
 
+  
   useEffect(() => {
     fetchReviews();
     const channel = supabase.channel(`live-${webtoonTitle}`).on('postgres_changes', { event: '*', schema: 'public', table: 'feedbacks' }, () => {
@@ -129,6 +137,25 @@ function CommunityBoard({ currentUser, webtoonTitle, onUpdateStats }: any) {
     }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [webtoonTitle, sortBy]);
+
+  useEffect(() => {
+    // 1. 리뷰 데이터가 있고, URL에 #review-xxx 같은 해시가 있을 때만 실행
+    if (reviews.length > 0 && window.location.hash) {
+      const hash = window.location.hash;
+      const id = decodeURIComponent(hash.replace('#', ''));
+      
+      // 2. 브라우저가 DOM을 그릴 시간을 아주 잠깐(0.1초) 줍니다.
+      const scrollTimer = setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          // 3. 해당 위치로 부드럽게 스크롤
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+
+      return () => clearTimeout(scrollTimer);
+    }
+  }, [reviews]); // 👈 중요: reviews 데이터가 로드될 때마다 체크합니다.
 
   const handleWriteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,7 +273,10 @@ function ReviewItem({ review, replies, currentUser, onReaction, onReplySubmit, r
   const isMyPost = currentUser?.id === review.user_id;
 
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 transition-all hover:shadow-md">
+    <div 
+      id={`review-${review.id}`} 
+      className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 transition-all hover:shadow-md scroll-mt-32 animate-target-flash"
+    >
       <div className="flex justify-between items-start mb-6">
         <div className="flex-1">
           {review.rating > 0 && (
@@ -278,6 +308,7 @@ function ReviewItem({ review, replies, currentUser, onReaction, onReplySubmit, r
         </div>
       </div>
 
+      {/* 추천, 답글 버튼 영역 */}
       <div className="flex items-center gap-6">
         <button onClick={() => onReaction(review.id, 'like')} className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-blue-500 transition-colors">
           👍 <span className="text-slate-900">{review.likes || 0}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/utils/supabase"; 
 import Link from "next/link"; 
 
@@ -13,11 +13,39 @@ interface Webtoon {
   score: number;
 }
 
-interface Review {
-  rating: number;
-  comment: string;
-  date: string;
-}
+// 키워드 데이터 (외부 선언으로 메모리 효율화)
+const ALL_KEYWORDS = [
+  { label: "네이버", value: "네이버 웹툰 중에서" },
+  { label: "카카오", value: "카카오 웹툰 중에서" },
+  { label: "무협", value: "무협" },
+  { label: "로맨스", value: "로맨스" },
+  { label: "스릴러", value: "스릴러" },
+  { label: "판타지", value: "판타지" },
+  { label: "학원물", value: "학교 배경의 학원물" },
+  { label: "스포츠", value: "열정 넘치는 스포츠" },
+  { label: "일상", value: "소소한 일상물" },
+  { label: "개그", value: "웃긴 개그" },
+  { label: "먼치킨", value: "먼치킨" },
+  { label: "사이다", value: "사이다" },
+  { label: "피폐물", value: "피폐한" },
+  { label: "힐링", value: "힐링" },
+  { label: "진지한", value: "진지한" },
+  { label: "뇌빼고 보는", value: "아무 생각 없이 보기 좋은" },
+  { label: "명작", value: "명작" },
+  { label: "유명하지 않은", value: "유명하지 않은" },
+  { label: "작화 좋은", value: "작화가 좋은" },
+  { label: "소설원작", value: "원작 소설이 있는" },
+  { label: "회빙환", value: "회귀, 빙의, 환생 소재의" },
+  { label: "게임판타지", value: "상태창이나 게임 시스템이 있는" },
+  { label: "생존물", value: "극한의 상황에서 살아남는" },
+  { label: "두뇌싸움", value: "지략전" },
+  { label: "아포칼립스", value: "아포칼립스 배경의" },
+  { label: "느와르", value: "느와르" },
+  { label: "정주행", value: "정주행하기 좋은" },
+  { label: "완결", value: "완결된" },
+  { label: "짧고 굵은", value: "짧고 굵은" },
+  { label: "복수극", value: "처절한 복수를 하는" },
+];
 
 export default function Home() {
   const [userInput, setUserInput] = useState("");
@@ -25,10 +53,20 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [seenList, setSeenList] = useState<string[]>([]);
   
-  // 인증 관련 상태
   const [user, setUser] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  // 1. 추천 키워드 상태 및 셔플 함수
+  const [randomKeywords, setRandomKeywords] = useState<{label: string, value: string}[]>([]);
+
+  const shuffleKeywords = useCallback(() => {
+    const shuffled = [...ALL_KEYWORDS]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 6);
+    setRandomKeywords(shuffled);
+  }, []);
+
+  // 초기 로드 설정
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -41,16 +79,27 @@ export default function Home() {
     const savedSeen = localStorage.getItem("seen-webtoons");
     if (savedSeen) setSeenList(JSON.parse(savedSeen));
 
+    // 키워드 초기 셔플
+    shuffleKeywords();
+
     return () => subscription.unsubscribe();
-  }, []);
+  }, [shuffleKeywords]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
   };
 
+  const handleKeywordClick = (value: string) => {
+    setUserInput((prev) => {
+      const trimmedPrev = prev.trim();
+      return trimmedPrev === "" ? value : `${trimmedPrev} ${value}`;
+    });
+  };
+
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!userInput.trim()) return;
     setLoading(true);
 
     let updatedSeen = [...seenList];
@@ -78,7 +127,6 @@ export default function Home() {
       if (parsedData.recommendations) {
         setResults(parsedData.recommendations);
 
-        // 추천 결과 DB 저장 (Upsert)
         await supabase.from('webtoons').upsert(
           parsedData.recommendations.map((w: Webtoon) => ({
             title: w.title,
@@ -100,10 +148,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-50 flex flex-col items-center p-6 md:p-20 font-sans relative">
-      {/* 상단 네비게이션 섹션 */}
-      <div className="absolute top-6 left-6 z-40">
-        <Link href="/library" className="bg-white text-slate-600 text-[18px] font-bold px-6 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
+      {/* 🚀 상단 네비게이션 섹션: 버튼 2개 배치 */}
+      <div className="absolute top-6 left-6 z-40 flex gap-3">
+        <Link href="/library" className="bg-white text-slate-600 text-[16px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
           별점 저장소 📚
+        </Link>
+        {/* 새롭게 추가된 전체 리뷰 광장 링크 */}
+        <Link href="/feed" className="bg-white text-slate-600 text-[16px] font-bold px-5 py-2.5 rounded-full shadow-sm border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-2 active:scale-95">
+          리뷰 저장소 💬
         </Link>
       </div>
 
@@ -126,13 +178,51 @@ export default function Home() {
       {/* 입력 폼 섹션 */}
       <section className="w-full max-w-2xl bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <textarea
-            className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-400 outline-none text-slate-800 text-[20px] placeholder:text-slate-400 resize-none"
-            rows={3}
-            placeholder="어떤 스타일의 웹툰을 찾으시나요?"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-          />
+          <div className="space-y-4">
+            <textarea
+              className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-400 outline-none text-slate-800 text-[20px] placeholder:text-slate-400 resize-none"
+              rows={3}
+              placeholder="어떤 스타일의 웹툰을 찾으시나요?"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+            />
+            
+            {/* 추천 키워드 및 도구 영역 */}
+            <div className="flex flex-wrap items-center gap-2 px-1">
+              {/* 리롤 버튼 🔄 */}
+              <button
+                type="button"
+                onClick={shuffleKeywords}
+                className="p-1.5 bg-white text-blue-500 rounded-lg border border-blue-100 hover:bg-blue-50 transition-all active:rotate-180 duration-500"
+                title="키워드 새로고침"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+              </button>
+
+              {randomKeywords.map((keyword) => (
+                <button
+                  key={keyword.label}
+                  type="button"
+                  onClick={() => handleKeywordClick(keyword.value)}
+                  className="px-3 py-1.5 bg-slate-50 text-slate-500 text-[12px] font-bold rounded-xl border border-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-all active:scale-95"
+                >
+                  {keyword.label}
+                </button>
+              ))}
+              
+              {/* 전체 지우기 버튼 ✕ */}
+              {userInput && (
+                <button
+                  type="button"
+                  onClick={() => setUserInput("")}
+                  className="px-3 py-1.5 text-red-400 text-[12px] font-bold hover:underline ml-auto"
+                >
+                  지우기 ✕
+                </button>
+              )}
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -150,7 +240,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* 통합 커뮤니티 보드 (추천된 모든 작품 리뷰 요약) */}
       {results.length > 0 && (
         <section className="w-full max-w-6xl mt-20 animate-in fade-in slide-in-from-bottom-5 duration-700">
           <CommunityBoard currentUser={user} recommendedTitles={results.map(r => r.title)} />
@@ -371,6 +460,18 @@ function WebtoonCard({ webtoon, user }: { webtoon: Webtoon, user: any }) {
 
   const getStorageKey = () => user ? `review-${user.id}-${webtoon.title}` : `review-guest-${webtoon.title}`;
 
+  // 플랫폼별 검색 URL 생성 함수 (수정됨)
+  const getPlatformSearchUrl = (title: string, platform: string) => {
+    const encodedTitle = encodeURIComponent(title);
+    if (platform.includes("네이버")) {
+      return `https://comic.naver.com/search?keyword=${encodedTitle}`;
+    } else if (platform.includes("카카오")) {
+      // 카카오 전용 검색 쿼리 적용
+      return `https://webtoon.kakao.com/search?q=${encodedTitle}`;
+    }
+    return `https://www.google.com/search?q=${platform}+${encodedTitle}`;
+  };
+
   const fetchAverageRating = async () => {
     try {
       const { data, error } = await supabase.from('feedbacks').select('rating').eq('webtoon_title', webtoon.title).not('rating', 'eq', 0);
@@ -406,7 +507,7 @@ function WebtoonCard({ webtoon, user }: { webtoon: Webtoon, user: any }) {
   return (
     <div className="bg-white p-7 rounded-[2rem] shadow-lg border border-slate-100 hover:shadow-2xl transition-all duration-300 flex flex-col min-h-[380px] relative group overflow-hidden">
       
-      {/* 🖱️ [Link 추가] 작품 정보 영역 클릭 시 상세 커뮤니티 이동 */}
+      {/* 🖱️ 작품 정보 영역 */}
       <Link href={`/community/${encodeURIComponent(webtoon.title)}`} className="flex-1 cursor-pointer">
         <div className="flex justify-between items-center mb-4">
           <div className="flex flex-wrap gap-1.5">
@@ -435,7 +536,22 @@ function WebtoonCard({ webtoon, user }: { webtoon: Webtoon, user: any }) {
             <span key={genre} className="text-[14px] text-slate-400 font-semibold italic">#{genre}</span>
           ))}
         </div>
-        <div className="text-[11px] font-bold text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">상세 리뷰 보러가기 →</div>
+
+        {/* 🔗 개선된 링크 섹션 */}
+        <div className="flex flex-col gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="text-[11px] font-bold text-blue-400 flex items-center gap-1">
+            상세 리뷰 보러가기 <span className="text-[14px]">→</span>
+          </div>
+          <a 
+            href={getPlatformSearchUrl(webtoon.title, webtoon.platform)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()} 
+            className="text-[11px] font-bold text-slate-400 hover:text-blue-600 flex items-center gap-1 transition-colors"
+          >
+            {webtoon.platform}에서 바로보기 <span className="text-[14px]">↗</span>
+          </a>
+        </div>
       </Link>
 
       {/* 🔽 피드백 영역 (이벤트 전파 방지 처리) */}
@@ -449,7 +565,7 @@ function WebtoonCard({ webtoon, user }: { webtoon: Webtoon, user: any }) {
 
         {mySavedRating === null && !showFeedbackForm && (
           <div className="flex flex-col items-center py-1">
-            <p className="text-[15px] font-bold text-slate-500 mb-2 italic">추천 결과가 마음에 드시나요?</p>
+            <p className="text-[15px] font-bold text-slate-500 mb-2 italic">별점에 동의하시나요?</p>
             <div className="flex gap-2 w-full">
               <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); alert("감사합니다! 😊"); }} className="flex-1 py-2.5 rounded-lg bg-slate-50 text-slate-400 text-[15px] font-bold hover:bg-slate-100">동의</button>
               <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowFeedbackForm(true); }} className="flex-1 py-2.5 rounded-lg bg-slate-900 text-white text-[15px] font-bold hover:bg-slate-800">비동의</button>
